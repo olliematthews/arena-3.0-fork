@@ -18,7 +18,6 @@ from IPython.display import display
 from PIL import Image
 import json
 
-
 # Make sure exercises are in the path
 section_dir = Path(__file__).parent
 exercises_dir = section_dir.parent
@@ -297,10 +296,8 @@ class BatchNorm2d(nn.Module):
         self.register_buffer("running_var", t.ones((num_features)))
         self.register_buffer("num_batches_tracked", t.tensor(0))
         
-        self.bias = nn.Parameter(t.zeros((num_features)))
-        self.weight = nn.Parameter(t.ones((num_features)))
-        self.register_buffer
-        pass
+        self.weight = nn.Parameter(t.ones(num_features))
+        self.bias = nn.Parameter(t.zeros(num_features))
 
     def forward(self, x: t.Tensor) -> t.Tensor:
         '''
@@ -313,15 +310,18 @@ class BatchNorm2d(nn.Module):
         Return: shape (batch, channels, height, width)
         '''
         if self.training:
-            mean = t.mean(x, dim = (0, 2, 3), keepdim=True)
-            var = t.var(x, dim = (0, 2, 3), keepdim=True, unbiased = False)
-            self.running_mean = (1 - self.momentum) * self.running_mean + (self.momentum) * mean[0,:,0,0]
-            self.running_var = (1 - self.momentum) * self.running_var + (self.momentum) * var[0,:,0,0]
+            mean = t.mean(x, dim=(0, 2, 3), keepdim=True)
+            var = t.var(x, dim=(0, 2, 3), unbiased=False, keepdim=True)
+            self.running_mean = (1 - self.momentum) * self.running_mean + self.momentum * mean.squeeze()
+            self.running_var = (1 - self.momentum) * self.running_var + self.momentum * var.squeeze()
             self.num_batches_tracked += 1
         else:
             mean = einops.rearrange(self.running_mean, "n_channels -> 1 n_channels 1 1")
             var = einops.rearrange(self.running_var, "n_channels -> 1 n_channels 1 1")
-        return (x - mean) / t.sqrt(var + self.eps) * einops.rearrange(self.weight, "n_channels -> 1 n_channels 1 1") + einops.rearrange(self.bias, "n_channels -> 1 n_channels 1 1")
+        weight = einops.rearrange(self.weight, "channels -> 1 channels 1 1")
+        bias = einops.rearrange(self.bias, "channels -> 1 channels 1 1")
+        
+        return ((x - mean) / t.sqrt(var + self.eps)) * weight + bias
 
     def extra_repr(self) -> str:
         keys = ["num_features", "eps", "momentum"]
@@ -466,7 +466,7 @@ pretrained_resnet = models.resnet34(weights=models.ResNet34_Weights.IMAGENET1K_V
 my_resnet = copy_weights(my_resnet, pretrained_resnet)
 
 
-# print_param_count(my_resnet, pretrained_resnet)
+print_param_count(my_resnet, pretrained_resnet)
 
 IMAGE_FILENAMES = [
     "chimpanzee.jpg",
