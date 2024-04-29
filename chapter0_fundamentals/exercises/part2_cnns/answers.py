@@ -17,6 +17,7 @@ from dataclasses import dataclass
 from IPython.display import display
 from PIL import Image
 import json
+from typing import Callable
 
 # Make sure exercises are in the path
 section_dir = Path(__file__).parent
@@ -524,4 +525,6 @@ for img, label in zip(images, my_predictions):
     print(f"Class {label}: {imagenet_labels[label]}")
     display(img)
     print()
+
+
 
